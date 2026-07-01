@@ -149,7 +149,7 @@ function DisplayPage({ imageUrl }: { imageUrl: string }) {
         <p style={{
           color: "#1a2744",
           fontSize: "15px",
-          fontWeight: 600,
+          fontWeight: 300,
           letterSpacing: "0.5px",
           fontFamily: "'Poppins', sans-serif",
           margin: 0,
@@ -159,7 +159,7 @@ function DisplayPage({ imageUrl }: { imageUrl: string }) {
         <p style={{
           color: "#1a2744",
           fontSize: "40px",
-          fontWeight: 800,
+          fontWeight: 300,
           letterSpacing: "2px",
           lineHeight: 1.1,
           fontVariantNumeric: "tabular-nums",
