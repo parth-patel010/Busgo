@@ -2,8 +2,14 @@ import express, { type Express } from "express";
 import cors from "cors";
 import session from "express-session";
 import pinoHttp from "pino-http";
+import path from "path";
 import router from "./routes";
 import { logger } from "./lib/logger";
+
+const workspaceRoot = process.cwd().endsWith(path.join("artifacts", "api-server"))
+  ? path.resolve(process.cwd(), "../..")
+  : process.cwd();
+const uploadsDir = path.resolve(workspaceRoot, "artifacts/api-server/uploads");
 
 const app: Express = express();
 
@@ -42,6 +48,7 @@ app.use(
   }),
 );
 
+app.use("/api/uploads", express.static(uploadsDir));
 app.use("/api", router);
 
 export default app;
