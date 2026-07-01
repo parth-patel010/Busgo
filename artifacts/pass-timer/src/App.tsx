@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { Router as WouterRouter, Switch, Route, useLocation } from "wouter";
 
 function useIndianTime() {
   const [now, setNow] = useState(() => new Date());
@@ -8,21 +7,18 @@ function useIndianTime() {
     return () => clearInterval(id);
   }, []);
 
-  const istOptions: Intl.DateTimeFormatOptions = { timeZone: "Asia/Kolkata" };
-  const dateStr = now.toLocaleDateString("en-IN", {
-    ...istOptions,
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-  const timeStr = now.toLocaleTimeString("en-IN", {
-    ...istOptions,
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  });
-  return { dateStr, timeStr };
+  const ist = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const dd = String(ist.getDate()).padStart(2, "0");
+  const mm = String(ist.getMonth() + 1).padStart(2, "0");
+  const yyyy = ist.getFullYear();
+  const hh = String(ist.getHours()).padStart(2, "0");
+  const min = String(ist.getMinutes()).padStart(2, "0");
+  const ss = String(ist.getSeconds()).padStart(2, "0");
+
+  return {
+    dateStr: `${dd}-${mm}-${yyyy}`,
+    timeStr: `${hh}:${min}:${ss}`,
+  };
 }
 
 function UploadPage({ onGo }: { onGo: (url: string) => void }) {
@@ -32,42 +28,82 @@ function UploadPage({ onGo }: { onGo: (url: string) => void }) {
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    setPreview(url);
+    setPreview(URL.createObjectURL(file));
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 px-4">
-      <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm flex flex-col items-center gap-6">
-        <h1 className="text-2xl font-bold text-gray-800 text-center">Pass Viewer</h1>
-        <p className="text-gray-500 text-sm text-center">Upload your pass image, then tap Go to view it with live Indian time.</p>
+    <div style={{
+      minHeight: "100vh",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      background: "#f3f4f6",
+      padding: "24px 16px",
+    }}>
+      <div style={{
+        background: "#fff",
+        borderRadius: "20px",
+        boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
+        padding: "32px 24px",
+        width: "100%",
+        maxWidth: "360px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: "20px",
+      }}>
+        <h1 style={{ fontSize: "22px", fontWeight: 700, color: "#1e293b", textAlign: "center" }}>
+          Pass Viewer
+        </h1>
 
         <div
-          className="w-full h-48 border-2 border-dashed border-blue-400 rounded-xl flex flex-col items-center justify-center cursor-pointer bg-blue-50 hover:bg-blue-100 transition-colors"
           onClick={() => fileRef.current?.click()}
+          style={{
+            width: "100%",
+            height: "190px",
+            border: "2px dashed #60a5fa",
+            borderRadius: "14px",
+            background: "#eff6ff",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            overflow: "hidden",
+          }}
         >
           {preview ? (
-            <img src={preview} alt="preview" className="h-full w-full object-contain rounded-xl" />
+            <img src={preview} alt="preview" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
           ) : (
             <>
-              <svg className="w-10 h-10 text-blue-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4-4m0 0l4-4m-4 4h12M4 20h16" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v12" />
+              <svg width="36" height="36" fill="none" stroke="#60a5fa" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4-4 4 4 4-6 4 6" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 20h16M12 4v8" />
               </svg>
-              <span className="text-blue-500 font-medium text-sm">Tap to upload image</span>
+              <span style={{ color: "#3b82f6", fontWeight: 500, fontSize: "14px", marginTop: "8px" }}>
+                Tap to upload image
+              </span>
             </>
           )}
         </div>
 
-        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+        <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
 
         <button
           disabled={!preview}
           onClick={() => preview && onGo(preview)}
-          className="w-full py-3 rounded-xl text-white font-bold text-lg transition-all"
           style={{
-            background: preview ? "linear-gradient(135deg,#2563eb,#1d4ed8)" : "#d1d5db",
+            width: "100%",
+            padding: "14px",
+            borderRadius: "12px",
+            border: "none",
+            background: preview ? "#2563eb" : "#d1d5db",
+            color: "#fff",
+            fontWeight: 700,
+            fontSize: "17px",
             cursor: preview ? "pointer" : "not-allowed",
+            letterSpacing: "0.5px",
           }}
         >
           Go
@@ -77,46 +113,62 @@ function UploadPage({ onGo }: { onGo: (url: string) => void }) {
   );
 }
 
-function DisplayPage({ imageUrl, onBack }: { imageUrl: string; onBack: () => void }) {
+function DisplayPage({ imageUrl }: { imageUrl: string }) {
   const { dateStr, timeStr } = useIndianTime();
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-between py-4 px-2">
-      <div className="w-full max-w-sm flex-1 flex flex-col">
-        <button
-          onClick={onBack}
-          className="mb-3 flex items-center gap-1 text-blue-600 font-medium text-sm self-start"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back
-        </button>
-
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden flex-1">
-          <img
-            src={imageUrl}
-            alt="pass"
-            className="w-full object-contain"
-            style={{ maxHeight: "70vh" }}
-          />
-        </div>
+    <div style={{
+      position: "fixed",
+      inset: 0,
+      display: "flex",
+      flexDirection: "column",
+      background: "#fff",
+    }}>
+      {/* Image fills all remaining space */}
+      <div style={{ flex: 1, overflow: "hidden", display: "flex" }}>
+        <img
+          src={imageUrl}
+          alt="pass"
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: "top",
+            display: "block",
+          }}
+        />
       </div>
 
-      <div className="w-full max-w-sm mt-4">
-        <div
-          className="rounded-2xl shadow-lg py-5 px-4 flex flex-col items-center"
-          style={{ background: "#f0f4ff", borderTop: "3px solid #2563eb" }}
-        >
-          <p className="text-blue-700 font-semibold text-base tracking-widest mb-1">{dateStr}</p>
-          <p
-            className="font-bold tabular-nums"
-            style={{ fontSize: "3rem", color: "#1e3a8a", letterSpacing: "0.05em", lineHeight: 1 }}
-          >
-            {timeStr}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">Indian Standard Time (IST)</p>
-        </div>
+      {/* Timer section — exact match to screenshot */}
+      <div style={{
+        background: "#f0f2f5",
+        padding: "18px 0 22px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}>
+        <p style={{
+          color: "#2563eb",
+          fontSize: "15px",
+          fontWeight: 600,
+          letterSpacing: "0.5px",
+          marginBottom: "4px",
+        }}>
+          {dateStr}
+        </p>
+        <p style={{
+          color: "#1a2744",
+          fontSize: "52px",
+          fontWeight: 800,
+          letterSpacing: "2px",
+          lineHeight: 1.1,
+          fontVariantNumeric: "tabular-nums",
+          fontFamily: "'Roboto', 'Inter', sans-serif",
+        }}>
+          {timeStr}
+        </p>
       </div>
     </div>
   );
@@ -124,20 +176,10 @@ function DisplayPage({ imageUrl, onBack }: { imageUrl: string; onBack: () => voi
 
 export default function App() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [showDisplay, setShowDisplay] = useState(false);
 
-  const handleGo = (url: string) => {
-    setImageUrl(url);
-    setShowDisplay(true);
-  };
-
-  const handleBack = () => {
-    setShowDisplay(false);
-  };
-
-  if (showDisplay && imageUrl) {
-    return <DisplayPage imageUrl={imageUrl} onBack={handleBack} />;
+  if (imageUrl) {
+    return <DisplayPage imageUrl={imageUrl} />;
   }
 
-  return <UploadPage onGo={handleGo} />;
+  return <UploadPage onGo={setImageUrl} />;
 }
