@@ -118,22 +118,18 @@ function DisplayPage({ imageUrl }: { imageUrl: string }) {
 
   return (
     <div style={{
-      position: "fixed",
-      inset: 0,
+      minHeight: "100vh",
       display: "flex",
       flexDirection: "column",
       background: "#fff",
     }}>
-      {/* Image fills all remaining space */}
-      <div style={{ flex: 1, overflow: "hidden", display: "flex" }}>
+      {/* Image — full width, natural height, scrollable */}
+      <div>
         <img
           src={imageUrl}
           alt="pass"
           style={{
             width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            objectPosition: "top",
             display: "block",
           }}
         />
