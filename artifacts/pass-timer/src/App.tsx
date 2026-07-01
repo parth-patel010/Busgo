@@ -162,7 +162,7 @@ function DisplayPage({ imageUrl }: { imageUrl: string }) {
         </p>
         <p style={{
           color: "#1a2744",
-          fontSize: "52px",
+          fontSize: "40px",
           fontWeight: 800,
           letterSpacing: "2px",
           lineHeight: 1.1,
