@@ -1,10 +1,13 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import session from "express-session";
-import pinoHttp from "pino-http";
+import { pinoHttp } from "pino-http";
+import type { IncomingMessage, ServerResponse } from "http";
 import path from "path";
 import router from "./routes";
 import { logger } from "./lib/logger";
+
+type RequestWithId = IncomingMessage & { id?: string | number };
 
 const workspaceRoot = process.cwd().endsWith(path.join("artifacts", "api-server"))
   ? path.resolve(process.cwd(), "../..")
@@ -17,10 +20,10 @@ app.use(
   pinoHttp({
     logger,
     serializers: {
-      req(req) {
+      req(req: RequestWithId) {
         return { id: req.id, method: req.method, url: req.url?.split("?")[0] };
       },
-      res(res) {
+      res(res: ServerResponse) {
         return { statusCode: res.statusCode };
       },
     },
