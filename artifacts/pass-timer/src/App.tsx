@@ -139,7 +139,7 @@ function DisplayPage({ imageUrl }: { imageUrl: string }) {
         />
       </div>
 
-      {/* Timer section — exact match to screenshot */}
+      {/* Timer section */}
       <div style={{
         background: "#f0f2f5",
         padding: "18px 0 22px",
@@ -148,13 +148,15 @@ function DisplayPage({ imageUrl }: { imageUrl: string }) {
         alignItems: "center",
         justifyContent: "center",
         flexShrink: 0,
+        gap: "2px",
       }}>
         <p style={{
-          color: "#2563eb",
+          color: "#1a2744",
           fontSize: "15px",
           fontWeight: 600,
           letterSpacing: "0.5px",
-          marginBottom: "4px",
+          fontFamily: "'Poppins', sans-serif",
+          margin: 0,
         }}>
           {dateStr}
         </p>
@@ -165,10 +167,26 @@ function DisplayPage({ imageUrl }: { imageUrl: string }) {
           letterSpacing: "2px",
           lineHeight: 1.1,
           fontVariantNumeric: "tabular-nums",
-          fontFamily: "'Roboto', 'Inter', sans-serif",
+          fontFamily: "'Poppins', sans-serif",
+          margin: 0,
         }}>
           {timeStr}
         </p>
+        <button style={{
+          marginTop: "14px",
+          background: "#000",
+          color: "#fff",
+          border: "none",
+          borderRadius: "8px",
+          padding: "11px 28px",
+          fontSize: "14px",
+          fontWeight: 600,
+          fontFamily: "'Poppins', sans-serif",
+          letterSpacing: "0.3px",
+          cursor: "pointer",
+        }}>
+          Register for Transport
+        </button>
       </div>
     </div>
   );
