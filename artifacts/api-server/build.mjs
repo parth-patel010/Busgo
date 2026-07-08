@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm } from "node:fs/promises";
+import { cp, rm } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -12,9 +12,11 @@ const artifactDir = path.dirname(fileURLToPath(import.meta.url));
 
 async function buildAll() {
   const distDir = path.resolve(artifactDir, "dist");
+  const apiDir = path.resolve(artifactDir, "api");
   await rm(distDir, { recursive: true, force: true });
+  await rm(apiDir, { recursive: true, force: true });
 
-  await esbuild({
+  const buildOptions = {
     entryPoints: [path.resolve(artifactDir, "src/index.ts")],
     platform: "node",
     bundle: true,
@@ -117,7 +119,14 @@ globalThis.__filename = __bannerUrl.fileURLToPath(import.meta.url);
 globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     `,
     },
+  };
+
+  await esbuild({
+    ...buildOptions,
+    outdir: distDir,
   });
+
+  await cp(distDir, apiDir, { recursive: true });
 }
 
 buildAll().catch((err) => {

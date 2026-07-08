@@ -6,7 +6,10 @@ const workspaceRoot = process.cwd().endsWith(path.join("artifacts", "api-server"
   ? path.resolve(process.cwd(), "../..")
   : process.cwd();
 
-export const uploadsDir = path.resolve(workspaceRoot, "artifacts/api-server/uploads");
+export const uploadsDir = process.env["VERCEL"]
+  ? path.join("/tmp", "busgo-uploads")
+  : path.resolve(workspaceRoot, "artifacts/api-server/uploads");
+
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
 export const upload = multer({
