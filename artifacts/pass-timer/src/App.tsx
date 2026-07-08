@@ -128,14 +128,50 @@ function DisplayPage({ imageUrl, onBack, onLogout }: { imageUrl: string; onBack?
 }
 
 /* ─── Upload (fallback for users without assigned photo) ─── */
-function UploadPage({ onGo, user, onLogout }: { onGo: (url: string) => void; user: NonNullable<AuthUser>; onLogout: () => void }) {
+function UploadPage({
+  onUploaded,
+  onAdmin,
+  user,
+  onLogout,
+}: {
+  onUploaded: (user: NonNullable<AuthUser>) => void;
+  onAdmin: () => void;
+  user: NonNullable<AuthUser>;
+  onLogout: () => void;
+}) {
   const [preview, setPreview] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (preview?.startsWith("blob:")) URL.revokeObjectURL(preview);
+    };
+  }, [preview]);
+
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setPhotoFile(file);
     setPreview(URL.createObjectURL(file));
+    setError("");
   };
+
+  const submit = async () => {
+    if (!photoFile) return;
+    setUploading(true);
+    setError("");
+    const fd = new FormData();
+    fd.append("photo", photoFile);
+    const res = await apiFetch("/auth/photo", { method: "POST", body: fd });
+    const data = await res.json();
+    setUploading(false);
+    if (!res.ok) { setError(data.error ?? "Upload failed"); return; }
+    onUploaded(data);
+  };
+
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#f3f4f6", padding: "24px 16px" }}>
       <div style={{ background: "#fff", borderRadius: "20px", boxShadow: "0 4px 24px rgba(0,0,0,0.10)", padding: "32px 24px", width: "100%", maxWidth: "360px", display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" }}>
@@ -143,7 +179,7 @@ function UploadPage({ onGo, user, onLogout }: { onGo: (url: string) => void; use
           <h1 style={{ fontFamily: POPPINS, fontSize: "20px", fontWeight: 700, color: "#1a2744", margin: 0 }}>Pass Viewer</h1>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             {user.isAdmin && (
-              <button onClick={() => onGo("__admin__")} style={{ fontFamily: POPPINS, fontSize: "11px", fontWeight: 600, background: "#f3f4f6", border: "1px solid #e5e7eb", borderRadius: "6px", padding: "4px 10px", cursor: "pointer", color: "#374151" }}>Admin</button>
+              <button onClick={onAdmin} style={{ fontFamily: POPPINS, fontSize: "11px", fontWeight: 600, background: "#f3f4f6", border: "1px solid #e5e7eb", borderRadius: "6px", padding: "4px 10px", cursor: "pointer", color: "#374151" }}>Admin</button>
             )}
             <button onClick={onLogout} style={{ fontFamily: POPPINS, fontSize: "11px", background: "none", border: "none", color: "#9ca3af", cursor: "pointer" }}>Logout</button>
           </div>
@@ -163,9 +199,10 @@ function UploadPage({ onGo, user, onLogout }: { onGo: (url: string) => void; use
           )}
         </div>
         <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
-        <button disabled={!preview} onClick={() => preview && onGo(preview)}
-          style={{ width: "100%", padding: "14px", borderRadius: "12px", border: "none", background: preview ? "#2563eb" : "#d1d5db", color: "#fff", fontWeight: 700, fontSize: "17px", cursor: preview ? "pointer" : "not-allowed", fontFamily: POPPINS }}>
-          Go
+        {error && <p style={{ fontFamily: POPPINS, fontSize: "13px", color: "#ef4444", textAlign: "center", margin: 0, width: "100%" }}>{error}</p>}
+        <button disabled={!photoFile || uploading} onClick={submit}
+          style={{ width: "100%", padding: "14px", borderRadius: "12px", border: "none", background: photoFile && !uploading ? "#2563eb" : "#d1d5db", color: "#fff", fontWeight: 700, fontSize: "17px", cursor: photoFile && !uploading ? "pointer" : "not-allowed", fontFamily: POPPINS }}>
+          {uploading ? "Saving…" : "Go"}
         </button>
       </div>
     </div>
@@ -363,8 +400,7 @@ function UserFormModal({
 export default function App() {
   const [user, setUser] = useState<AuthUser>(null);
   const [checking, setChecking] = useState(true);
-  const [page, setPage] = useState<"main" | "admin" | "upload-display">("main");
-  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
+  const [page, setPage] = useState<"main" | "admin" | "upload">("main");
 
   useEffect(() => {
     apiFetch("/auth/me").then(async res => {
@@ -377,7 +413,6 @@ export default function App() {
     await apiFetch("/auth/logout", { method: "POST" });
     setUser(null);
     setPage("main");
-    setUploadedUrl(null);
   };
 
   if (checking) {
@@ -392,20 +427,22 @@ export default function App() {
   if (!user.active && !user.isAdmin) return <InactivePage user={user} onLogout={logout} />;
   if (page === "admin") return <AdminPage onBack={() => setPage("main")} />;
 
-  // Regular user with admin-assigned photo — show directly
+  // User with saved photo — show directly
   if (user.photoUrl && page === "main") {
-    return <DisplayPage imageUrl={user.photoUrl} onLogout={logout}
-      onBack={user.isAdmin ? () => { setPage("main"); } : undefined} />;
+    return <DisplayPage imageUrl={user.photoUrl} onLogout={logout} onBack={() => setPage("upload")} />;
   }
 
-  // Admin or user without photo — show upload then display
-  if (page === "upload-display" && uploadedUrl) {
-    return <DisplayPage imageUrl={uploadedUrl} onBack={() => { setPage("main"); setUploadedUrl(null); }} onLogout={logout} />;
+  if (page === "upload" || !user.photoUrl) {
+    return <UploadPage
+      user={user}
+      onLogout={logout}
+      onAdmin={() => setPage("admin")}
+      onUploaded={(updatedUser) => {
+        setUser(updatedUser);
+        setPage("main");
+      }}
+    />;
   }
 
-  return <UploadPage user={user} onLogout={logout} onGo={(url) => {
-    if (url === "__admin__") { setPage("admin"); return; }
-    setUploadedUrl(url);
-    setPage("upload-display");
-  }} />;
+  return null;
 }

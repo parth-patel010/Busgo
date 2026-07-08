@@ -3,16 +3,11 @@ import cors from "cors";
 import session from "express-session";
 import { pinoHttp } from "pino-http";
 import type { IncomingMessage, ServerResponse } from "http";
-import path from "path";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { uploadsDir } from "./lib/upload";
 
 type RequestWithId = IncomingMessage & { id?: string | number };
-
-const workspaceRoot = process.cwd().endsWith(path.join("artifacts", "api-server"))
-  ? path.resolve(process.cwd(), "../..")
-  : process.cwd();
-const uploadsDir = path.resolve(workspaceRoot, "artifacts/api-server/uploads");
 
 const app: Express = express();
 

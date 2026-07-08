@@ -1,8 +1,8 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
-import path from "path";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { upload, photoUrlFromPath, deletePhotoFile } from "../lib/upload";
 
 const router: IRouter = Router();
 
@@ -12,7 +12,7 @@ function toUserResponse(user: typeof usersTable.$inferSelect) {
     username: user.username,
     active: user.active,
     isAdmin: user.isAdmin,
-    photoUrl: user.photoPath ? `/api/uploads/${path.basename(user.photoPath)}` : null,
+    photoUrl: photoUrlFromPath(user.photoPath),
   };
 }
 
@@ -38,6 +38,25 @@ router.post("/auth/login", async (req, res): Promise<void> => {
 
 router.post("/auth/logout", (req, res): void => {
   req.session.destroy(() => { res.json({ ok: true }); });
+});
+
+router.post("/auth/photo", upload.single("photo"), async (req, res): Promise<void> => {
+  const userId = req.session.userId;
+  if (!userId) { res.status(401).json({ error: "Not logged in" }); return; }
+  if (!req.file) { res.status(400).json({ error: "Photo required" }); return; }
+
+  const [existing] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  if (!existing) { res.status(401).json({ error: "User not found" }); return; }
+
+  deletePhotoFile(existing.photoPath);
+
+  const [user] = await db
+    .update(usersTable)
+    .set({ photoPath: req.file.path })
+    .where(eq(usersTable.id, userId))
+    .returning();
+
+  res.json(toUserResponse(user!));
 });
 
 export default router;

@@ -1,28 +1,10 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
-import multer from "multer";
-import path from "path";
-import fs from "fs";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { upload, photoUrlFromPath, deletePhotoFile } from "../lib/upload";
 
 const router: IRouter = Router();
-
-const workspaceRoot = process.cwd().endsWith(path.join("artifacts", "api-server"))
-  ? path.resolve(process.cwd(), "../..")
-  : process.cwd();
-
-const uploadsDir = path.resolve(workspaceRoot, "artifacts/api-server/uploads");
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadsDir),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
-  },
-});
-const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
 function requireAdmin(req: any, res: any, next: any) {
   if (!req.session?.userId) { res.status(401).json({ error: "Not logged in" }); return; }
@@ -39,7 +21,7 @@ router.get("/admin/users", async (_req, res): Promise<void> => {
     .orderBy(usersTable.createdAt);
   const withUrl = users.map(u => ({
     ...u,
-    photoUrl: u.photoPath ? `/api/uploads/${path.basename(u.photoPath)}` : null,
+    photoUrl: photoUrlFromPath(u.photoPath),
   }));
   res.json(withUrl);
 });
@@ -55,7 +37,7 @@ router.post("/admin/users", upload.single("photo"), async (req, res): Promise<vo
     .returning();
   res.status(201).json({
     id: user.id, username: user.username, active: user.active, isAdmin: user.isAdmin,
-    photoUrl: user.photoPath ? `/api/uploads/${path.basename(user.photoPath)}` : null,
+    photoUrl: photoUrlFromPath(user.photoPath),
   });
 });
 
@@ -70,9 +52,8 @@ router.patch("/admin/users/:id", upload.single("photo"), async (req, res): Promi
   if (active !== undefined) updates.active = active === "true";
 
   if (req.file) {
-    // delete old photo
     const [existing] = await db.select({ photoPath: usersTable.photoPath }).from(usersTable).where(eq(usersTable.id, id));
-    if (existing?.photoPath && fs.existsSync(existing.photoPath)) fs.unlinkSync(existing.photoPath);
+    deletePhotoFile(existing?.photoPath);
     updates.photoPath = req.file.path;
   }
 
@@ -80,7 +61,7 @@ router.patch("/admin/users/:id", upload.single("photo"), async (req, res): Promi
   if (!user) { res.status(404).json({ error: "User not found" }); return; }
   res.json({
     id: user.id, username: user.username, active: user.active, isAdmin: user.isAdmin,
-    photoUrl: user.photoPath ? `/api/uploads/${path.basename(user.photoPath)}` : null,
+    photoUrl: photoUrlFromPath(user.photoPath),
   });
 });
 
@@ -97,7 +78,7 @@ router.delete("/admin/users/:id", async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = parseInt(raw, 10);
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
-  if (user?.photoPath && fs.existsSync(user.photoPath)) fs.unlinkSync(user.photoPath);
+  deletePhotoFile(user?.photoPath);
   await db.delete(usersTable).where(eq(usersTable.id, id));
   res.sendStatus(204);
 });
